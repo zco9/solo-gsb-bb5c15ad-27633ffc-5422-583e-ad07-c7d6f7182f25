@@ -9,7 +9,12 @@
 <body>
   <header>
     <h1>🎞️ 演出复盘（只读）</h1>
-    <nav><a href="/">← 返回首页</a></nav>
+    <nav>
+      <a href="annotations.html">复盘批注簿</a>
+      <a href="compare.html">场次对比</a>
+      <a href="archive.html">复盘归档</a>
+      <a href="/">← 返回首页</a>
+    </nav>
   </header>
   <main>
     <!-- 场次列表 -->
@@ -89,11 +94,34 @@
         <h2>事件时间轴（逐行事件日志）</h2>
         <div class="replay-event-list" id="eventList"></div>
       </div>
+
+      <!-- 复盘批注簿入口：从当前播放位置圈定区间；批注仅存本浏览器 IndexedDB -->
+      <div class="card">
+        <h2>📓 复盘批注簿（只读 · 批注仅存本浏览器 IndexedDB）</h2>
+        <div class="muted" style="margin-bottom:10px;line-height:1.7">
+          圈定本场一段时间并填写批注与标签：先在时间轴上播放 / 拖到区间起点，依次点「圈定起点」「圈定终点」（自动吸附到当前时刻最近的已发生事件），
+          再填写批注。锚点记录首尾事件 canonical JSON 的 SHA-256 与指纹出现序号，重载日志自动重定位，找不到或顺序倒置则标失效并保留原文。
+          全部批注管理（筛选、导入 / 导出）见 <a href="annotations.html">复盘批注簿</a>。
+        </div>
+        <div class="transport" style="margin-top:0">
+          <button class="secondary" id="annMarkStart">① 圈定起点（当前位置）</button>
+          <button class="secondary" id="annMarkEnd" disabled>② 圈定终点（当前位置）</button>
+          <button class="secondary mini" id="annClearMarks" style="display:none">清除圈定</button>
+          <span id="annMarkInfo" class="muted" style="flex:1;text-align:right"></span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="annCreateBtn" disabled>③ 填写批注…</button>
+          <a class="narrow" href="annotations.html" id="annBookLink"><button class="secondary" type="button">打开复盘批注簿</button></a>
+          <span class="muted" id="annCount"></span>
+        </div>
+        <div id="annMiniList" class="ann-mini-list"></div>
+      </div>
     </section>
   </main>
 
   <script src="common.js"></script>
   <script src="replay.js"></script>
+  <script src="annotations.js"></script>
   <script>
   (() => {
     'use strict';
@@ -505,6 +533,155 @@
     positionFilter.addEventListener('change', () => { buildTimeline(); buildEventList(); renderPlayhead(); });
 
     // ---------------------------------------------------------------------
+    // 复盘批注簿：从当前播放位置圈定区间 → 跳转批注页填写；
+    // 批注只存浏览器 IndexedDB（CueAnnotations），本页不发起任何写请求。
+    // ---------------------------------------------------------------------
+    const annMarkStart = document.getElementById('annMarkStart');
+    const annMarkEnd = document.getElementById('annMarkEnd');
+    const annClearMarks = document.getElementById('annClearMarks');
+    const annMarkInfo = document.getElementById('annMarkInfo');
+    const annCreateBtn = document.getElementById('annCreateBtn');
+    const annBookLink = document.getElementById('annBookLink');
+    const annCount = document.getElementById('annCount');
+    const annMiniList = document.getElementById('annMiniList');
+
+    let markStartIdx = null;
+    let markEndIdx = null;
+    let sessionAnnotations = []; // 本场批注（含重定位结果 resolved）
+    let annOccTable = null;
+
+    // 当前播放位置最近的「已发生」事件索引（t <= currentT）；起点之前回退为 0
+    function currentEventIndex() {
+      let idx = 0;
+      for (let i = 0; i < events.length; i++) {
+        if (events[i].t <= currentT) idx = i;
+        else break;
+      }
+      return idx;
+    }
+
+    function refreshMarkInfo() {
+      const s = markStartIdx != null ? `起点 +${fmtT(events[markStartIdx].t)}` : '';
+      const e = markEndIdx != null ? `终点 +${fmtT(events[markEndIdx].t)}` : '';
+      annMarkInfo.textContent = [s, e].filter(Boolean).join('　→　');
+      annClearMarks.style.display = (markStartIdx != null || markEndIdx != null) ? '' : 'none';
+      annCreateBtn.disabled = !(markStartIdx != null && markEndIdx != null);
+    }
+
+    function clearMarks() {
+      markStartIdx = null;
+      markEndIdx = null;
+      annMarkEnd.disabled = true;
+      refreshMarkInfo();
+    }
+
+    annMarkStart.addEventListener('click', () => {
+      markStartIdx = currentEventIndex();
+      markEndIdx = null;
+      annMarkEnd.disabled = false;
+      annCreateBtn.disabled = true;
+      refreshMarkInfo();
+    });
+    annMarkEnd.addEventListener('click', () => {
+      if (markStartIdx == null) return;
+      const idx = currentEventIndex();
+      markEndIdx = Math.max(markStartIdx, idx); // 终点不允许早于起点（同事件可构成零长区间）
+      refreshMarkInfo();
+    });
+    annClearMarks.addEventListener('click', clearMarks);
+    annCreateBtn.addEventListener('click', () => {
+      if (markStartIdx == null || markEndIdx == null || !data) return;
+      const u = new URL('annotations.html', location.href);
+      u.searchParams.set('file', data.session.fileId);
+      u.searchParams.set('run', String(data.session.runId));
+      u.searchParams.set('si', String(markStartIdx));
+      u.searchParams.set('ei', String(markEndIdx));
+      location.href = u.pathname + u.search;
+    });
+
+    // 时间轴上的批注区间层：有效绿色实带（点击跳到区间起点）、失效红色虚带
+    function renderAnnotationBands() {
+      timelineEl.querySelectorAll('.ann-band').forEach((el) => el.remove());
+      if (!sessionAnnotations.length) return;
+      const endMs = duration + MAX_TRAIL_MS;
+      const pct = (t) => Math.max(0, Math.min(100, (t / endMs) * 100));
+      sessionAnnotations.forEach((item) => {
+        const r = item.resolved;
+        const t0 = r.valid ? r.startT : item.ann.startT;
+        const t1 = r.valid ? r.endT : item.ann.endT;
+        if (t0 == null || t1 == null) return;
+        const left = pct(Math.min(t0, t1));
+        const width = Math.max(0.8, pct(Math.max(t0, t1)) - left);
+        const band = document.createElement('div');
+        band.className = 'ann-band' + (r.valid ? ' valid' : ' invalid');
+        band.style.cssText = `left:${left}%;width:${width}%`;
+        band.title = `${r.valid ? '有效批注' : '失效批注（原文保留）'}：${(item.ann.tags || []).join('、') || '无标签'} — ${item.ann.text}`;
+        if (r.valid) band.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          setPlaying(false);
+          seekTo(r.startT);
+        });
+        timelineEl.appendChild(band);
+      });
+    }
+
+    function renderAnnotationMiniList() {
+      const validN = sessionAnnotations.filter((x) => x.resolved.valid).length;
+      const invalidN = sessionAnnotations.length - validN;
+      const conflictN = sessionAnnotations.filter((x) => x.ann.conflict).length;
+      annCount.textContent = `本场批注 ${sessionAnnotations.length} 条（有效 ${validN} / 失效 ${invalidN}${conflictN ? ` / 冲突 ${conflictN}` : ''}）`;
+      if (!sessionAnnotations.length) {
+        annMiniList.innerHTML = '<div class="muted">本场尚无批注。</div>';
+        return;
+      }
+      annMiniList.innerHTML = sessionAnnotations
+        .slice()
+        .sort((a, b) => new Date(b.ann.createdAt) - new Date(a.ann.createdAt))
+        .map((item) => {
+          const { ann, resolved } = item;
+          const jump = resolved.valid
+            ? `<a href="#" data-jump="${resolved.startT}" class="ann-mini-jump">↗ 跳到区间起点 +${fmtT(resolved.startT)}</a>`
+            : '<span class="ann-mini-jump disabled" title="' + esc(resolved.reason || '批注已失效') + '">✖ 失效（原文保留）</span>';
+          const conflict = ann.conflict ? '<span class="ann-badge conflict">⚠️ 冲突</span>' : '';
+          const tags = (ann.tags || []).map((t) => `<span class="chip">${esc(t)}</span>`).join('');
+          const range = resolved.valid
+            ? `+${fmtT(resolved.startT)} → +${fmtT(resolved.endT)}`
+            : `+${fmtT(ann.startT)} → +${fmtT(ann.endT)}（圈定时记录）`;
+          return `<div class="ann-mini-row ${resolved.valid ? '' : 'is-invalid'}">
+            <div class="ann-mini-head">${conflict}${jump}<span class="muted">${range}</span></div>
+            <div>${esc(ann.text) || '<span class="muted">（无批注文本）</span>'}</div>
+            <div>${tags}</div>
+          </div>`;
+        }).join('');
+      annMiniList.querySelectorAll('[data-jump]').forEach((a) => {
+        a.addEventListener('click', (e) => { e.preventDefault(); setPlaying(false); seekTo(Number(a.dataset.jump)); });
+      });
+    }
+
+    async function loadSessionAnnotations() {
+      if (!data || !annOccTable) return;
+      let all = [];
+      try {
+        all = await CueAnnotations.getAll();
+      } catch {
+        annCount.textContent = 'IndexedDB 不可用，批注未加载（本页仍为纯只读，不影响复盘）';
+        return;
+      }
+      sessionAnnotations = all
+        .filter((a) => a.sessionRef.fileId === data.session.fileId && Number(a.sessionRef.runId) === data.session.runId)
+        .map((ann) => ({ ann, resolved: CueAnnotations.relocalize(ann, annOccTable) }))
+        .map((item) => {
+          if (item.resolved.valid) {
+            item.resolved.startT = events[item.resolved.startIndex].t;
+            item.resolved.endT = events[item.resolved.endIndex].t;
+          }
+          return item;
+        });
+      renderAnnotationBands();
+      renderAnnotationMiniList();
+    }
+
+    // ---------------------------------------------------------------------
     // 初始化
     // ---------------------------------------------------------------------
     async function initPlayer(fileId, runId, seekT) {
@@ -526,6 +703,12 @@
       events = data.events;
       duration = events.length ? events[events.length - 1].t : 0;
       currentT = 0;
+
+      // 批注簿：构建本场事件指纹表，「打开复盘批注簿」默认按本场筛选
+      annOccTable = await CueAnnotations.buildOccurrenceTable(events);
+      clearMarks();
+      annBookLink.href = `annotations.html?fsel=${encodeURIComponent(data.session.fileId + '/' + data.session.runId)}`;
+      loadSessionAnnotations();
 
       playerTitle.textContent = `场次复盘：${fmtClock(data.session.startedAt)} → ${fmtClock(data.session.finishedAt)}`;
       document.title = `复盘 ${fmtClock(data.session.startedAt)} · 舞台口令同步系统`;
@@ -551,6 +734,12 @@
     const seekParam = Number(params.get('t'));
     if (fileId && runId !== null) initPlayer(fileId, runId, seekParam);
     else loadList();
+
+    // 从批注簿页返回本页（浏览器前进 / 后退或重新可见）时刷新批注区间带与迷你列表
+    window.addEventListener('pageshow', () => { if (data) loadSessionAnnotations(); });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && data) loadSessionAnnotations();
+    });
   })();
   </script>
 </body>

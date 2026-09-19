@@ -505,3 +505,113 @@ tr.current-row td { background: #24304a; }
   word-break: break-all;
 }
 
+
+/* 复盘批注簿（/annotations.html 与 /replay.html 内卡片，只读 · IndexedDB 本地存储） */
+.ann-main { max-width: 1080px; }
+.ann-prefill {
+  background: #1c2740;
+  border: 1px solid #2f4a7a;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #c3c9d8;
+  line-height: 1.7;
+}
+.ann-form textarea {
+  background: #14161c;
+  border: 1px solid #3a4052;
+  border-radius: 6px;
+  color: #e8eaf0;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+}
+.ann-label { display: block; font-size: 13px; color: #8b93a8; margin: 10px 0 5px; }
+.ann-range-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ann-range-row select { width: 100%; height: 132px; font-size: 12px; }
+.ann-msg { font-size: 13px; color: #8b93a8; }
+.ann-msg.ok { color: #8fe3a5; }
+.ann-msg.err { color: #ff9c9c; }
+.ann-msg.warn { color: #f0c169; }
+
+.ann-filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ann-filters select { width: auto; flex: 0 1 260px; }
+.ann-filters label { font-size: 13px; color: #8b93a8; }
+.ann-inline { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.ann-inline input { width: auto; }
+
+.ann-list { margin-top: 14px; display: grid; gap: 12px; }
+.ann-row {
+  background: #14161c;
+  border: 1px solid #2c3040;
+  border-left: 3px solid #4caf7d;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.ann-row.is-invalid { border-left-color: #ff7676; opacity: 0.92; }
+.ann-row-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ann-session { font-size: 12px; color: #9aa3b8; flex: 1; min-width: 200px; }
+.ann-jump { font-size: 13px; color: #8ab4ff; text-decoration: none; white-space: nowrap; }
+.ann-jump:hover { text-decoration: underline; }
+.ann-jump.disabled { color: #ff9c9c; cursor: not-allowed; }
+.ann-del { flex: 0 0 auto; }
+.ann-range { margin-top: 8px; font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; color: #9aa3b8; }
+.ann-text { margin-top: 8px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.ann-tags { margin-top: 6px; }
+.ann-foot { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; }
+.ann-foot code { color: #5d6478; }
+.ann-anchor-event { font-family: "SFMono-Regular", Consolas, monospace; }
+.ann-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ann-badge.valid { background: #23402a; color: #8fe3a5; }
+.ann-badge.invalid { background: #4a2b2b; color: #ff9c9c; }
+.ann-badge.conflict { background: #4a3a1e; color: #f0c169; }
+.ann-invalid-line { margin-top: 6px; font-size: 12px; color: #ff9c9c; line-height: 1.6; }
+.ann-conflict-line { margin-top: 6px; font-size: 12px; color: #f0c169; line-height: 1.6; }
+.ann-empty { padding: 24px 0; text-align: center; }
+
+/* 复盘时间轴上的批注区间带：衬于口令条带与事件标记之下，不遮挡拖动与标记点击 */
+.timeline .ann-band {
+  position: absolute;
+  top: 6px;
+  bottom: 22px;
+  border-radius: 3px;
+  z-index: 0;
+  cursor: pointer;
+}
+.timeline .ann-band.valid {
+  background: rgba(76, 175, 125, 0.22);
+  border-top: 2px solid #4caf7d;
+  border-bottom: 2px solid #4caf7d;
+}
+.timeline .ann-band.invalid {
+  background: rgba(255, 118, 118, 0.12);
+  border-top: 2px dashed #ff7676;
+  border-bottom: 2px dashed #ff7676;
+  cursor: not-allowed;
+}
+
+/* 复盘页内的批注迷你列表 */
+.ann-mini-list { margin-top: 12px; display: grid; gap: 8px; }
+.ann-mini-row {
+  background: #14161c;
+  border: 1px solid #2c3040;
+  border-left: 3px solid #4caf7d;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.ann-mini-row.is-invalid { border-left-color: #ff7676; }
+.ann-mini-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 12px; }
+.ann-mini-jump { color: #8ab4ff; text-decoration: none; white-space: nowrap; }
+.ann-mini-jump:hover { text-decoration: underline; }
+.ann-mini-jump.disabled { color: #ff9c9c; cursor: not-allowed; }
