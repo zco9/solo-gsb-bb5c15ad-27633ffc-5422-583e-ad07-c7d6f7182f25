@@ -1040,6 +1040,7 @@ server.listen(PORT, () => {
   console.log(`  演出复盘: http://localhost:${PORT}/replay.html （只读，回放已结束场次）`);
   console.log(`  场次对比: http://localhost:${PORT}/compare.html （只读，逐口令对齐两个已结束场次）`);
   console.log(`  复盘归档: http://localhost:${PORT}/archive.html （只读，导出 / 本地校验可验证归档）`);
+  console.log(`  复盘批注簿: http://localhost:${PORT}/notes.html （只读复盘，批注仅存浏览器 IndexedDB）`);
   console.log(`  指挥权租约: ${LEASE_TTL_MS / 1000} 秒（心跳续期，超时/断线自动释放）`);
   console.log(`  事件日志: data/events-${state.sessionId}.jsonl`);
 });

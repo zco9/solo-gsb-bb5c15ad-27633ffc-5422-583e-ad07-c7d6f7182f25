@@ -72,6 +72,13 @@
           <span class="time-readout"><span id="timeNow">0:00.0</span> / <span id="timeEnd">0:00.0</span></span>
         </div>
         <div class="replay-kbd" style="margin-top:8px">空格键播放 / 暂停，← / → 前后跳转 1 秒；拖动时间轴或点击事件行可跳转到任意时刻。</div>
+
+        <!-- 复盘批注簿入口：从当前播放位置圈定一段写批注（批注只存本机 IndexedDB） -->
+        <div class="replay-notes-bar">
+          <span class="muted">📝 想就当前画面这一段做复盘批注？以播放头位置为区间起点，到批注簿圈定首尾事件、填写批注与标签（仅存本浏览器）。</span>
+          <a id="notesEntry" class="narrow" href="notes.html"><button class="mini secondary">✏ 从当前播放位置写批注</button></a>
+          <a class="narrow" href="notes.html"><button class="mini secondary">📒 打开批注簿</button></a>
+        </div>
       </div>
 
       <div class="replay-state-grid">
@@ -120,6 +127,7 @@
     const statePanel = document.getElementById('statePanel');
     const cuePanel = document.getElementById('cuePanel');
     const eventList = document.getElementById('eventList');
+    const notesEntry = document.getElementById('notesEntry');
 
     const WARN_EVENTS = new Set([
       'cue-timeout', 'cue-recalled', 'cue-paused', 'confirm-duplicate', 'confirm-late',
@@ -433,6 +441,12 @@
     function render() {
       renderState();
       const lastVisible = renderPlayhead();
+      // 批注簿入口始终携带最新播放位置（含连续播放逐帧更新）：进入后起点
+      // 吸附到不晚于该时刻的最后事件
+      if (data) {
+        notesEntry.href = `notes.html?file=${encodeURIComponent(data.session.fileId)}` +
+          `&run=${data.session.runId}&t=${Math.max(0, Math.floor(currentT))}`;
+      }
       // 顺序播放时自动跟随；用户手动拖动列表不打断跟随（仅播放中滚动）
       if (playing && lastVisible) {
         lastVisible.scrollIntoView({ block: 'nearest' });

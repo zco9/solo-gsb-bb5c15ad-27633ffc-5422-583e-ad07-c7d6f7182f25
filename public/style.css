@@ -64,7 +64,18 @@ input[type="text"], input[type="number"], select {
   font-size: 14px;
   width: 100%;
 }
-input:focus, select:focus { outline: none; border-color: #2f6fed; }
+textarea {
+  background: #14161c;
+  border: 1px solid #3a4052;
+  border-radius: 6px;
+  color: #e8eaf0;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+  resize: vertical;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: #2f6fed; }
 
 .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
 .row > * { flex: 1; }
@@ -504,4 +515,144 @@ tr.current-row td { background: #24304a; }
   font-size: 12px;
   word-break: break-all;
 }
+
+/* 复盘批注簿（/notes.html，只读复盘之上的本地批注） */
+.notes-main { max-width: 1200px; }
+.notes-intro {
+  background: #1e3350;
+  border: 1px solid #2f5f9f;
+  color: #9cc2ff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.notes-range-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px; }
+@media (max-width: 760px) { .notes-range-grid { grid-template-columns: 1fr; } }
+.notes-range-grid label { display: block; font-size: 13px; color: #8b93a8; margin-bottom: 6px; }
+.notes-range-out {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  color: #9aa3b8;
+  background: #14161c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+.notes-range-warn {
+  display: none;
+  color: #ff9c9c;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.notes-range-warn.show { display: block; }
+.notes-field { margin-bottom: 12px; }
+.notes-field > label { display: block; font-size: 13px; color: #8b93a8; margin-bottom: 6px; }
+
+.notes-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.notes-toolbar .tb-item { flex: 1 1 200px; }
+.notes-toolbar .tb-item.narrow { flex: 0 0 auto; }
+.notes-toolbar label { display: block; font-size: 13px; color: #8b93a8; margin-bottom: 6px; }
+.notes-toolbar select { width: 100%; }
+
+.notes-msg {
+  display: none;
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.notes-msg.show { display: block; }
+.notes-msg.ok { background: #1e3a2a; border: 1px solid #2f6f4a; color: #c9e8d4; }
+.notes-msg.err { background: #4a2b2b; border: 1px solid #7a3a3a; color: #f0c9c9; }
+
+.notes-card {
+  background: #14161c;
+  border: 1px solid #2c3040;
+  border-left: 3px solid #3a4052;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.notes-card.conflict { border-left-color: #b8862b; }
+.notes-card.invalid { border-left-color: #a03a3a; opacity: 0.92; }
+.notes-card.valid { border-left-color: #2f6f4a; }
+.notes-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.notes-range-line {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  color: #8ab4ff;
+}
+.notes-session-line { font-size: 12px; color: #5d6478; }
+.notes-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.notes-status.valid { background: #23402a; color: #8fe3a5; }
+.notes-status.invalid { background: #4a2b2b; color: #ff9c9c; }
+.notes-status.conflict { background: #4a3a1e; color: #f0c169; }
+.notes-conflict-banner {
+  background: #4a3a1e;
+  color: #f0c169;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.notes-invalid-reason {
+  color: #ff9c9c;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.notes-text {
+  font-size: 14px;
+  color: #e8eaf0;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 8px;
+}
+.notes-anchor-detail {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 11px;
+  color: #5d6478;
+  line-height: 1.6;
+  word-break: break-all;
+  margin-bottom: 8px;
+}
+.notes-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.notes-meta-line { font-size: 12px; color: #5d6478; margin-left: auto; }
+.notes-empty { color: #7c8398; font-size: 13px; text-align: center; padding: 24px 0; }
+
+/* 复盘播放器中的批注入口条 */
+.replay-notes-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #2c3040;
+  font-size: 13px;
+}
+.replay-notes-bar .muted { flex: 1 1 220px; line-height: 1.5; }
 
